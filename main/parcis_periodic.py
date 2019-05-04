@@ -1,22 +1,81 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 """
-Created on Thu Apr 25 18:40:15 2019
+Created on Tue Apr 30 10:39:39 2019
 
 @author: sadra
 """
+
 import numpy as np
 from gurobipy import Model,LinExpr,QuadExpr,GRB
 
 from pypolycontain.lib.zonotope import zonotope
 from pypolycontain.lib.containment_encodings import subset_generic,subset_zonotopes
 
-def RCI(sys,q=0,alpha=0,K=5):
+def RCI_periodic(sys,q=0,alpha=0,K=5):
     """
-    Computes a Robust Control Invariant (RCI) set for LTI system sys
+    Computes a Robust Control Invariant (RCI) set for Linear Periodic Systems
     """
+    model=Model("RCI_periodic")
     q=K*sys.n if q==0 else q
-    model=Model("RCI")
+    n_w=sys.n_w
+    T=sys.T+1
+    n=sys.n
+    m=sys.m
+    list_of_q=list(q+np.array(range(T))*n_w)
+    print list_of_q
+    G,theta={},{}
+    for t in range(T):
+        _q=list_of_q[t]
+        G[t]=model.addVars(range(n),range(_q),lb=-GRB.INFINITY,ub=GRB.INFINITY,name="G_%d"%t)
+        theta[t]=model.addVars(range(T),range(_q),lb=-GRB.INFINITY,ub=GRB.INFINITY,name="theta_%s"%t)
+    _q=list_of_q[T-1]+n_w
+    G[T]=model.addVars(range(n),range(_q),lb=-GRB.INFINITY,ub=GRB.INFINITY,name="G_%d"%T)
+    model.update()
+    for t in range(T):
+        print "adding constraints of t",t
+        A,B,W=sys.A[t],sys.B[t],sys.W[t]
+        _q=list_of_q[t]
+        for i in range(n):
+            for j in range(_q):
+                expr_x=LinExpr([(A[i,k],G[t][k,j]) for k in range(n)])
+                expr_u=LinExpr([(B[i,k],theta[t][k,j]) for k in range(m)])
+                model.addConstr(G[t+1][i,j]==expr_x+expr_u)
+            for j in range(_q,_q+n_w):
+                model.addConstr(G[t+1][i,j]==W[i,j-_q])
+        G_t=np.array([G[t][i,j] for i in range(n) for j in range(_q)]).reshape(n,_q)
+        theta_t=np.array([theta[t][i,j] for i in range(m) for j in range(_q)]).reshape(m,_q)
+        X_t=zonotope(np.zeros((n,1)),G_t)
+        U_t=zonotope(np.zeros((m,1)),theta_t)
+        subset_generic(model,X_t,sys.X)
+        subset_generic(model,U_t,sys.U)
+
+    _q=list_of_q[T-1]+n_w
+    for i in range(n):
+        for j in range(q):
+            model.addConstr(G[T][i,j+n_w*(T)]==G[0][i,j])
+        for j in range(0,n_w*(T)):
+            model.addConstr(G[T][i,j]==0)
+    # Cost function
+    J=LinExpr([(1.0/(t+1.1),G[t][i,i]) for t in range(T+1) for i in range(n)])
+    model.setObjective(J)
+    model.write("peridoic RCI.lp")
+    model.setParam('TimeLimit', 150)
+    model.optimize()
+    G_num,theta_num={},{}
+    for t in range(T):
+        _q=list_of_q[t]
+        G_num[t]=np.array([[G[t][i,j].X] for i in range(n) for j in range(_q)]).reshape(n,_q)
+    _q=list_of_q[t]+n_w
+    G_num[T]=np.array([[G[T][i,j].X] for i in range(n) for j in range(_q)]).reshape(n,_q)
+    for t in range(T):
+        _q=list_of_q[t]
+        theta_num[t]=np.array([[theta[t][i,j].X] for i in range(m) for j in range(_q)]).reshape(m,_q)
+    return (G_num,theta_num)
+
+
+    q=K*sys.n if q==0 else q
+    model=Model("RCI_periodic")
     phi=tupledict_to_array(model.addVars(range(sys.n),range(q),lb=-GRB.INFINITY,ub=GRB.INFINITY,name="phi"))
     theta=tupledict_to_array(model.addVars(range(sys.m),range(q),lb=-GRB.INFINITY,ub=GRB.INFINITY,name="theta"))
     psi=tupledict_to_array(model.addVars(range(sys.n),range(sys.w),lb=-GRB.INFINITY,ub=GRB.INFINITY,name="psi"))
