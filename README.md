@@ -1,2 +1,2 @@
 # parsi
-This package is helpful in finding viable sets for linear systems with bounded disturbance.
+PARSI (paramterized set invariance) is a package for finding a viable set for linear time invariant/variant systems with bounded disturbance and hard constraints over control input and state space.
