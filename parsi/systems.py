@@ -27,23 +27,25 @@ class Linear_system:
                 self.sys = 'non-disturbed'              # For x^+ = Ax+Bu (without given disturbance)
             else:
                 self.sys = 'LTI'                #it's a linear time-invariant system
-                 assert(len(A) == W.x.shape(0)), "The dimension of matrix A should be the same as dimension of W"
-                 assert(len(B) == W.x.shape(0)), "The dimension of matrix B should be the same as dimension of W"
+                assert(len(A) == W.x.shape[0]), "The dimension of matrix A should be the same as dimension of W"
+                assert(len(B) == W.x.shape[0]), "The dimension of matrix B should be the same as dimension of W"
 
             assert(len(A) == len(B)), "The number of rows in matrix A and B need to be the same"
 
         else:
             raise ValueError ('Input areguments need to be in the form of a list for LTV systems and np.ndarray for LTI systems')
 
-        self.A = A
-        self.B = B
+        self.A = np.array(A)
+        self.B = np.array(B)
         self.W = W
         self.X = X
         self.U = U
-
+        self.beta=0.2 if self.sys=='LTI' else None               #For finding RCI
+        self.E=True if self.sys=='LTI' else None             #For finding RCI
 
     def __repr__(self):
         return self.sys
+
 
 # class Coupled_linear(Linear_system):
 
