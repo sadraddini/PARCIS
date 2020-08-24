@@ -40,11 +40,33 @@ class Linear_system:
         self.W = W
         self.X = X
         self.U = U
+        self.state = np.array([0,0])
         self.beta=0.2 if self.sys=='LTI' else None               #For finding RCI
         self.E=True if self.sys=='LTI' else None             #For finding RCI
+        self.omega=None             #RCI set
+        self.theta=None             #Action set
 
     def __repr__(self):
         return self.sys
+
+    def simulate(self,u):
+        x_next = np.dot(self.A,self.state)+np.dot(self.B,u)+sample(self.W)
+        self.state = x_next
+        return x_next
+
+    def rci(self,order_max=10,size='min',obj='include_center'):
+        import parsi
+        omega,theta=parsi.rci(self,order_max=10,size=size,obj=obj)
+        self.omega=omega
+        self.theta=theta
+        return omega,theta
+
+
+#sampling from a set represented in zonotope
+def sample(zonotope):
+    random_box=np.random.uniform(low=-1.0, high=1.0, size=zonotope.G.shape[1])
+    output= zonotope.x + np.dot(zonotope.G,random_box)
+    return output
 
 
 # class Coupled_linear(Linear_system):

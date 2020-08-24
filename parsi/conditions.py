@@ -79,3 +79,28 @@ def rci_constraints(program,system,T_order=3):
         output['beta']=beta
     
     return output
+
+
+def mpc_constraints(program,system,horizon=1,hard_constraints=True):
+
+    if system.sys=='LTI':
+        n = system.A.shape[0]               # Matrix A is n*n
+        m = system.B.shape[1]               # Matrix B is n*m
+
+        x=program.NewContinuousVariables( n,horizon,'x')
+        x=np.concatenate((system.state.reshape(-1,1),x ), axis=1)
+        u=program.NewContinuousVariables( m,horizon,'u')
+
+        #Dynamics
+        dynamics=np.equal( np.dot(system.A , x[:,:-1]) + np.dot(system.B , u) , x[:,1:] ,dtype='object').flatten()
+        program.AddLinearConstraint(dynamics)
+
+        #Hard constraints over state
+        if hard_constraints==True:
+            if system.X!=None:
+                _=[pp.be_in_set(program,x[:,i],system.X) for i in range(1,horizon)]
+            #Hard constraints over control input
+            if system.U!=None:
+                _=[pp.be_in_set(program,u[:,i],system.U) for i in range(horizon)]
+
+        return x,u

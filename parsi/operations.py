@@ -60,5 +60,61 @@ def rci(system,order_max=10,size='min',obj='include_center'):
         else:
             del prog
             continue    
+    print("Infeasible:We couldn't find any RCI set. You can change the order_max or system.beta and try again.")
+    return None,None
 
-    return "Infeasible:We couldn't find any RCI set. You can change the order_max or system.beta and try again."
+
+#MPC: right now it just covers point convergence
+def mpc(system,horizon=1,x_desired='origin'):
+    """
+    MPC: Model Predictive Control
+    """
+    landa_terminal=10                #Terminal cost coefficient
+    landa_controller=1
+
+    n = system.A.shape[0]               # Matrix A is n*n
+    m = system.B.shape[1]               # Matrix B is n*m
+    if x_desired=='origin':
+            x_desired=np.zeros(n)
+
+    if system.omega==None and system.theta==None:
+        system.rci()
+    omega,theta=system.omega , system.theta
+
+    prog=MP.MathematicalProgram()
+    x,u=parsi.mpc_constraints(prog,system,horizon=horizon,hard_constraints=False)
+
+    #Controller is in a shape of x=T_x + T zeta, so u=M_x + M zeta
+    zeta =np.array([pp.be_in_set(prog,x[:,i],omega) for i in range(horizon)]).T                #Last one does not count
+    prog.AddLinearConstraint( np.equal( theta.x.reshape(-1,1)+np.dot(theta.G,zeta) , u ,dtype='object').flatten() )
+
+    #Objective
+    
+    #Cost Over x
+    prog.AddQuadraticErrorCost(
+    Q=np.eye(n*(horizon-1)),
+    x_desired=np.tile(x_desired,horizon-1),
+    vars=x[:,1:-1].T.flatten())
+
+    #Terminal Cost
+    prog.AddQuadraticErrorCost(
+    Q=landa_terminal*np.eye(n),
+    x_desired=x_desired,
+    vars=x[:,-1].flatten())
+
+    #Energy Cost
+    prog.AddQuadraticErrorCost(
+    Q=landa_controller*np.eye(m*horizon),
+    x_desired=np.zeros(m*horizon),
+    vars=u.flatten())
+
+    #Result
+    result=gurobi_solver.Solve(prog)    
+    print('result',result.is_success())
+
+    if result.is_success():
+        u_mpc=result.GetSolution(u[:,0])
+        return u_mpc
+
+
+    
