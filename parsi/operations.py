@@ -43,7 +43,7 @@ def rci(system,order_max=10,size='min',obj='include_center'):
         #objective function for minimizing the distance between the RCI set and the set of admissible states
         if obj=='include_center':
             prog.AddQuadraticErrorCost(
-            Q=np.eye(len(var['T_x'])) if size=='min' else -1*np.eye(len(T)),
+            Q=np.eye(len(var['T_x'])),
             x_desired=system.X.x,
             vars=var['T_x'])
 
@@ -62,6 +62,51 @@ def rci(system,order_max=10,size='min',obj='include_center'):
             continue    
     print("Infeasible:We couldn't find any RCI set. You can change the order_max or system.beta and try again.")
     return None,None
+
+
+def viable_limited_time(system,order_max=10,size='min',obj='include_center',algorithm='slow'):
+    """
+    Given a LTV system, this function returns a limited time vaibale set and its action set.
+    """
+    number_of_steps=len(system.A)
+    n= system.A[0].shape[0]
+    
+    for order in np.arange(1, order_max, 1/n):
+        print('order',order)
+        prog=MP.MathematicalProgram()
+        var=parsi.viable_constraints(prog,system,T_order=order,algorithm=algorithm)
+        T=[var['T'][i].flatten() for i in range(number_of_steps)]
+
+        #Defining the objective function
+        #objective function for minimizing the size of the RCI set
+        if size=='min':
+            [prog.AddQuadraticErrorCost(
+            Q=np.eye(len(T[i])),
+            x_desired=np.zeros(len(T[i])),
+            vars=T[i]) for i in range(number_of_steps)]
+        #objective function for minimizing the distance between the RCI set and the set of admissible states
+        if obj=='include_center':
+            [prog.AddQuadraticErrorCost(
+            Q=np.eye(len(var['T_x'][i])),
+            x_desired=system.X[i].x,
+            vars=var['T_x'][i]) for i in range(number_of_steps)]
+
+        #Result
+        result=gurobi_solver.Solve(prog)    
+        print('result',result.is_success())
+        if result.is_success():
+            T_x=[result.GetSolution(var['T_x'][i]) for i in range(number_of_steps)]
+            M_x=[result.GetSolution(var['M_x']) for i in range(number_of_steps-1)]
+            omega=[pp.zonotope(G=result.GetSolution(var['T'][i]),x=T_x[i]) for i in range(number_of_steps)]
+            theta=[pp.zonotope(G=result.GetSolution(var['M'][i]),x=M_x[i]) for i in range(number_of_steps-1)]
+            return omega,theta
+        else:
+            del prog
+            continue    
+    print("Infeasible:We couldn't find any time_limited viable set. You can change the order_max and try again.")
+    return None,None
+
+
 
 
 #MPC: right now it just covers point convergence
@@ -110,7 +155,6 @@ def mpc(system,horizon=1,x_desired='origin'):
 
     #Result
     result=gurobi_solver.Solve(prog)    
-    print('result',result.is_success())
 
     if result.is_success():
         u_mpc=result.GetSolution(u[:,0])

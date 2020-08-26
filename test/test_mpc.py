@@ -19,11 +19,11 @@ U=pp.zonotope(G=np.eye(1),x=[0])*4
 sys=parsi.Linear_system(A,B,W=W,X=X,U=U)
 sys.beta=0.9
 sys.E=False
-sys.rci()
+sys.rci(size='min')
 sys.state=parsi.sample(sys.omega)
 pp.visualize([sys.X,sys.omega])
 path=sys.state.reshape(-1,1)
-for step in range(40):
+for step in range(50):
     #Finding the controller
     u=parsi.mpc(sys,horizon=1,x_desired='origin')
     state= sys.simulate(u)

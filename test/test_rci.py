@@ -21,7 +21,7 @@ U=pp.zonotope(G=np.eye(1),x=[0])
 
 sys=parsi.Linear_system(A,B,W=W,X=X,U=U)
 sys.beta=0.9
-sys.E=True
+sys.E=False
 #omega,theta = parsi.rci(sys,order_max=10)
 omega,theta = sys.rci(order_max=10)
 

@@ -69,7 +69,13 @@ def sample(zonotope):
     return output
 
 
-# class Coupled_linear(Linear_system):
+# class Coupled_linear_sytem(Linear_system):
+#     """
+#     This class covers coupled linear systems in the form:
+#     x^+_i = A_{ii}x_i + B_{ii}u_i + w_i + A_{ij}x_j + B_{ij}u_j
+#     """
+#     def __init__(self,system,partition):
+
 
 
 
