@@ -45,6 +45,9 @@ class Linear_system:
         self.E=True if self.sys=='LTI' else None             #For finding RCI
         self.omega=None             #RCI set
         self.theta=None             #Action set
+        self.neighbours=None                #For coupled linear systems
+        self.A_ij={}
+        self.B_ij={}
 
     def __repr__(self):
         return self.sys

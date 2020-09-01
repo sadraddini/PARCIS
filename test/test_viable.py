@@ -12,7 +12,7 @@ try:
 except:
     raise ModuleNotFoundError("parsi package is not installed properly")
 
-number_of_steps=15
+number_of_steps=5
 A=[np.array([[1+0.001*t,1],[0,1-0.001*t]]) for t in range(number_of_steps)]
 B=[np.array([[0],[1+0.002*t]]) for t in range(number_of_steps)]
 W=[pp.zonotope(G=np.eye(2),x=[0,0])*0.2 for t in range(number_of_steps)]

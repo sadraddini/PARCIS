@@ -44,7 +44,7 @@ def rci_constraints(program,system,T_order=3):
 
     if flag==1:
         _,_,beta = pp.subset(program, pp.zonotope(G=e,x=np.zeros(e.shape[0])) , pp.zonotope(G=system.W.G,x=np.zeros(system.W.G.shape[0])) , alpha='scalar')             #Z(0,E) \subset Z(0,beta*W)
-        program.AddBoundingBoxConstraint(0,1,beta)              #CHECK IT, I NEED 0<=beta<1
+        program.AddBoundingBoxConstraint(0,0.999,beta)              #CHECK IT, I NEED 0<=beta<1
         # program.AddLinearConstraint(beta < 1)
         # program.AddLinearConstraint(beta >= 0)
         program.AddLinearConstraint(np.equal(T_x, np.zeros(T.shape[0]),dtype='object').flatten())
